@@ -17,7 +17,6 @@ public class Instatiator {
     final ArrayList<Rule> EMPTY_LIST = new ArrayList<>(0);
     public final Statement statement;
     final String IT_SUFFIX = "_insertiontime";
-    final String BACKUP_SUFFIX = "_backup";
     final Connection c;
 
     public Instatiator(HashMap<Attribute, ArrayList<Rule>> attributeInHead, HashMap<Attribute, ArrayList<Rule>> attributeInTail, HashMap<String, String> tableName2keyCol) throws SQLException {
@@ -97,7 +96,7 @@ public class Instatiator {
             itJoinStrings.add(alias + "." + tableName2keyCol.get(table) + " = " + alias + IT_SUFFIX + ".insertionKey");
         }
         var idQuery = rule.table2Alias.get(identifier.attribute.table) + "." + tableName2keyCol.get(identifier.attribute.table) + " = '" + identifier.key + "'";
-        var finalQuery = "SELECT " + String.join(", ", ruleToColumnNames(rule)) + " FROM " + String.join(", ", tableStrings) + " WHERE " + rule.condition + " AND " + idQuery + " AND " + String.join(" AND ", itJoinStrings) + " AND (" + String.join(" OR ", ruleToItQuery(rule, sourceInsertionTime)) + ")";
+        var finalQuery = "SELECT " + String.join(", ", ruleToColumnNames(rule)) + " FROM " + String.join(", ", tableStrings) + " WHERE " + idQuery + " AND " + String.join(" AND ", itJoinStrings) + " AND (" + String.join(" OR ", ruleToItQuery(rule, sourceInsertionTime)) + ") AND " + rule.condition;
         // OR insertionTime > identifier. insertionTime => ONLY create cells from later insertionTime
         // ONLY check rules where all cells are not null
         return statement.executeQuery(finalQuery);
@@ -163,16 +162,6 @@ public class Instatiator {
         }
     }
 
-    public void resetSchema() throws SQLException {
-        var tableName = tableName2keyCol.keySet().iterator().next();
-        var schemaName = tableName.split("\\.")[0];
-        var dropQuery = "DROP SCHEMA IF EXISTS " + schemaName + " CASCADE";
-        statement.execute(dropQuery);
-        var q = "SELECT clone_schema('" + schemaName + BACKUP_SUFFIX + "', '" + schemaName + "', 'DATA');";
-        statement.execute(q);
-        c.commit();
-    }
-
     public void resetValues(Collection<Cell> cells) throws SQLException {
         for (var cell : cells) {
             var stmt = c.prepareStatement("UPDATE " + cell.attribute.table + " SET " + cell.attribute.attribute + " = ? WHERE " + tableName2keyCol.get(cell.attribute.table) + " = '" + cell.key + "'");
@@ -204,25 +193,18 @@ public class Instatiator {
         c.commit();
     }
 
-    public long earliestTimestamp() throws SQLException {
-        var attribute = attributeInHead.keySet().iterator().next();
-        var q = "SELECT MIN(" + attribute.attribute + ") FROM " + attribute.table + IT_SUFFIX + ";";
-        var rs = statement.executeQuery(q);
-        rs.next();
-        return rs.getLong(1);
-    }
-
-    public long latestTimestamp() throws SQLException {
-        var attribute = attributeInHead.keySet().iterator().next();
-        var q = "SELECT MAX(" + attribute.attribute + ") FROM " + attribute.table + IT_SUFFIX + ";";
-        var rs = statement.executeQuery(q);
-        rs.next();
-        return rs.getLong(1);
-    }
-
     public ArrayList<String> getKeys(Attribute attr) throws SQLException {
         ArrayList<String> keys = new ArrayList<>(ConfigParameter.numKeys);
         var resultSet = statement.executeQuery("SELECT " + tableName2keyCol.get(attr.table) + " FROM " + attr.table + " ORDER BY RANDOM() LIMIT " + ConfigParameter.numKeys);
+        while (resultSet.next()) {
+            keys.add(resultSet.getString(1));
+        }
+        return keys;
+    }
+
+    public ArrayList<String> getKeysInTime(Attribute attr, long minTs, long maxTs) throws SQLException {
+        ArrayList<String> keys = new ArrayList<>(ConfigParameter.numKeys);
+        var resultSet = statement.executeQuery("SELECT a." + tableName2keyCol.get(attr.table) + " FROM " + attr.table + " a, " + attr.table + IT_SUFFIX + " b WHERE insertionKey = a." + tableName2keyCol.get(attr.table) + " AND b." + attr.attribute + " BETWEEN " + minTs + " AND " + maxTs + "ORDER BY RANDOM() LIMIT " + ConfigParameter.numKeys);
         while (resultSet.next()) {
             keys.add(resultSet.getString(1));
         }
