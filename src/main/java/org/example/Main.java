@@ -41,9 +41,6 @@ public class Main {
         if (root.has("derivedFile")) {
             ConfigParameter.derivedFile = root.getString("derivedFile");
         }
-        if (root.has("resultFile")) {
-            ConfigParameter.resultFile = root.getString("resultFile");
-        }
         if (root.has("batching")) {
             ConfigParameter.batching = root.getBoolean("batching");
         }

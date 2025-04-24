@@ -6,7 +6,6 @@ public class ConfigParameter {
     static String ruleFile = "rules_" + dataset + ".csv";
     static String schemaFile = "schema_" + dataset + ".csv";
     static String derivedFile = "derived_" + dataset + ".csv";
-    static String resultFile = "result_" + dataset + ".db";
 
     public static String connectionUrl = "jdbc:postgresql://localhost:5432/"; // Note final slash
     public static String database = "database";
@@ -29,6 +28,5 @@ public class ConfigParameter {
         ConfigParameter.ruleFile = "rules_" + dataset + ".csv";
         ConfigParameter.schemaFile = "schema_" + dataset + ".csv";
         ConfigParameter.derivedFile = "derived_" + dataset + ".csv";
-        ConfigParameter.resultFile = "result_" + dataset + ".db";
     }
 }
