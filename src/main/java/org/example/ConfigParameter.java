@@ -16,7 +16,7 @@ public class ConfigParameter {
     static boolean batching = false;
     static boolean scheduling = false;
     static boolean averageDependence = false;
-    static int[] batchSizes = new int[]{numKeys};
+    static int[] batchSizes = new int[]{};
     static boolean isBatchSizeTime = false;
     static boolean measureMemory = true;
     static long startSchedule = 1;

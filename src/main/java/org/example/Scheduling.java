@@ -116,7 +116,7 @@ public class Scheduling {
     public static void scheduleExperiment(Instatiator instatiator) throws Exception {
         for (var rule : derivedData) {
             long[] reconstructions = new long[25];
-             var keys = instatiator.getKeys(rule.head);
+            var keys = instatiator.getKeys(rule.head);
 
             for (var key : keys) {
                 var dependentValues = new ArrayList<Cell>();
@@ -154,6 +154,7 @@ public class Scheduling {
 
         HashMap<Cell, ArrayList<Cell>> derivedData2BaseData = new HashMap<>();
         HashMap<Cell, Long> randomDeletionTime = new HashMap<>();
+        var retentionAwareInstantiator = new RetentionAwareInstantiator(instatiator.attributeInHead, instatiator.attributeInTail, instatiator.tableName2keyCol);
 
         var keys = instatiator.getKeys(derivedData.get(0).head);
         HashMap<String, ArrayList<Cell>> key2Cell = new HashMap<>();
@@ -169,7 +170,6 @@ public class Scheduling {
                         for (var child : edge) {
                             instatiator.completeCell(child);
                             // delete before it "expires"
-                            // var delTime = (random.nextInt((int) ((child.insertionTime - start) / 1000))) * 1000L;
                             var delTime = random.nextInt((int) (child.insertionTime - start));
                             randomDeletionTime.put(child, start + delTime);
                             dependentValues.add(child);
@@ -244,12 +244,13 @@ public class Scheduling {
 
             var batchStart = start;
             ArrayList<Cell> batch = new ArrayList<>();
+            retentionAwareInstantiator.retentionCells = retentionKeyCellSet;
             while (currRetentionTime != -1 || currDemandTime != -1) {
                 if (currRetentionTime != -1 && (currRetentionTime <= currDemandTime || currDemandTime == -1)) {
                     // process retention driven erasures
                     curr = currRetentionTime;
                     if (curr - batchStart >= gracePeriod) {
-                        var model = new InstantiatedModel(batch, instatiator);
+                        var model = new InstantiatedModel(batch, retentionAwareInstantiator);
                         deletedCells += batchedOptimalDelete(model, batch).size();
                         batch.clear();
                         batchStart = curr;
@@ -282,6 +283,34 @@ public class Scheduling {
             System.out.println(retentionDrivenShare + "," + reconstructions + "," + deletedCells);
             reconstructions = 0;
             deletedCells = 0;
+        }
+    }
+
+    static class RetentionAwareInstantiator extends Instatiator {
+
+        HashSet<Cell> retentionCells;
+
+        public RetentionAwareInstantiator(HashMap<Attribute, ArrayList<Rule>> attributeInHead, HashMap<Attribute, ArrayList<Rule>> attributeInTail, HashMap<String, String> tableName2keyCol) throws SQLException {
+            super(attributeInHead, attributeInTail, tableName2keyCol);
+        }
+
+        @Override
+        public void iterateRules(Cell start, long sourceInsertionTime, ArrayList<Cell.HyperEdge> result, HashMap<Attribute, ArrayList<Rule>> connectedRules) throws SQLException {
+            for (var rule : connectedRules.getOrDefault(start.attribute, EMPTY_LIST)) {
+                try (var rs = queryRule(rule, start, sourceInsertionTime)) {
+                    var edges = resultSetToCellList(rule, start, rs, sourceInsertionTime);
+                    var edgeIter = edges.iterator();
+                    while (edgeIter.hasNext()) {
+                        for (var cell : edgeIter.next()) {
+                            if (retentionCells.contains(cell)) {
+                                edgeIter.remove();
+                                break;
+                            }
+                        }
+                    }
+                    result.addAll(edges);
+                }
+            }
         }
     }
 }
