@@ -32,11 +32,29 @@ All configuration parameters are optional. The defaults noted in `ConfigParamete
 - **`scheduling`**: Boolean flag to enable or disable the scheduling experiments.
 - The **`batching`** and **`scheduling`** together control which experiment is executed.
 - 
-  |                  | **`batching`** | `true`       | `false`      |
-  |------------------|----------------|--------------|--------------|
-  | **`scheduling`** | --             | --           | --           |
-  | `true`           | --             | experiment 5 | experiment 4 |
-  | `false`          | --             | experiment 3 | experiment 1 |
+  <table>
+  <tr>
+    <td></td>
+    <td></td>
+    <td colspan="2">batching</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td></td>
+    <td>true</td>
+    <td>false</td>
+  </tr>
+  <tr>
+    <td rowspan="2">scheduling</td>
+    <td>true</td>
+    <td>experiment 5</td>
+    <td>experiment 4</td>
+  </tr>
+  <tr>
+    <td>false</td>
+    <td>experiment 3</td>
+    <td>experiment 1</td>
+  </tr></table>
 - **`averageDependence`**: Boolean flag to enable or disable average dependence calculation, i.e., experiment 2.
 - **`batchSizes`**: An array of integers specifying the batch sizes.
 - **`isBatchSizeTime`**: Boolean flag to indicate if the batch sizes are interpreted as times.
@@ -44,4 +62,5 @@ All configuration parameters are optional. The defaults noted in `ConfigParamete
 - **`startSchedule`**: The start time for the schedule.
 - **`endSchedule`**: The end time for the schedule.
 - **`baseFrequency`**: The base frequency for scheduling.
+
 
